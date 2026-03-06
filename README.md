@@ -13,12 +13,14 @@ Full-stack admin dashboard for Lumen Leaf Properties, designed as a professional
 | Backend   | Express.js (Node.js)                |
 | Database  | MongoDB (Atlas or local)            |
 | Auth      | JWT + bcryptjs                      |
+| Process   | PM2                                 |
 
 ## Prerequisites
 
-- **Node.js** >= 18
-- **npm** >= 9
-- **MongoDB** — either a local instance or a MongoDB Atlas cluster
+- Node.js >= 18
+- npm >= 9
+- MongoDB Atlas cluster (or local MongoDB)
+- PM2 (`npm install -g pm2`)
 
 ## Project Structure
 
@@ -33,7 +35,7 @@ dashboard/
 │   ├── index.html
 │   ├── vite.config.js
 │   └── package.json
-├── server/                 # Express API
+├── server/                 # Express API + static file server
 │   ├── models/             # Mongoose schemas (5 collections)
 │   ├── routes/             # API route handlers
 │   ├── middleware/          # JWT auth middleware
@@ -41,14 +43,24 @@ dashboard/
 │   ├── index.js            # Express entry point
 │   ├── .env                # Environment variables
 │   └── package.json
+├── ecosystem.config.cjs    # PM2 configuration
 └── README.md
 ```
 
-## Quick Start (Local Development)
+---
 
-### 1. Configure environment
+## Local Development
 
-Edit `server/.env` with your MongoDB connection string:
+### 1. Install dependencies
+
+```bash
+cd dashboard/server && npm install
+cd ../client && npm install
+```
+
+### 2. Configure environment
+
+Edit `server/.env`:
 
 ```
 MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/lumen_leaf
@@ -56,29 +68,56 @@ JWT_SECRET=your-secret-key
 PORT=5000
 ```
 
-For a local MongoDB instance, use:
-
-```
-MONGODB_URI=mongodb://localhost:27017/lumen_leaf
-```
-
-### 2. Install dependencies
-
-```bash
-cd dashboard/server && npm install
-cd ../client && npm install
-```
-
 ### 3. Seed the database
-
-This creates 50 properties, 500+ transactions, 120+ maintenance tickets, 9 broker partners, and an admin user.
 
 ```bash
 cd dashboard/server
 node seed.js
 ```
 
-You should see:
+### 4. Start dev servers (two terminals)
+
+```bash
+# Terminal 1 — API
+cd dashboard/server && npm run dev
+
+# Terminal 2 — Frontend
+cd dashboard/client && npm run dev
+```
+
+Open `http://localhost:5173`. Login: `admin@lumenleaf.com` / `demo2025`
+
+---
+
+## Production Deployment
+
+Everything below runs from the `dashboard/` directory.
+
+### Step 1 — Install dependencies
+
+```bash
+cd server && npm install
+cd ../client && npm install
+```
+
+### Step 2 — Configure environment
+
+Create or edit `server/.env`:
+
+```
+MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/lumen_leaf
+JWT_SECRET=change-this-to-a-strong-secret
+PORT=5000
+```
+
+### Step 3 — Seed the database
+
+```bash
+cd server
+node seed.js
+```
+
+Expected output:
 
 ```
 ✓ Seed complete!
@@ -89,117 +128,93 @@ You should see:
   Login: admin@lumenleaf.com / demo2025
 ```
 
-### 4. Start the servers
-
-**Terminal 1 — API server:**
-
-```bash
-cd dashboard/server
-npm run dev
-```
-
-**Terminal 2 — Frontend:**
-
-```bash
-cd dashboard/client
-npm run dev
-```
-
-### 5. Open the dashboard
-
-Navigate to `http://localhost:5173` (or the port Vite assigns).
-
-**Login credentials:**
-
-| Field    | Value                  |
-|----------|------------------------|
-| Email    | admin@lumenleaf.com    |
-| Password | demo2025               |
-
-## Deploying to a Server
-
-### Option A: VPS / Cloud VM (Recommended for demos)
-
-#### 1. Provision a server
-
-Any Linux VPS works — DigitalOcean, AWS EC2, Hetzner, etc. Ubuntu 22.04+ recommended.
-
-#### 2. Install dependencies on server
-
-```bash
-# Node.js
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Verify
-node -v && npm -v
-```
-
-#### 3. Clone and install
-
-```bash
-git clone <your-repo-url> lumen-leaf
-cd lumen-leaf/dashboard
-
-cd server && npm install
-cd ../client && npm install
-```
-
-#### 4. Configure environment
-
-```bash
-cd server
-cp .env.example .env   # or create manually
-nano .env              # set MONGODB_URI, JWT_SECRET, PORT
-```
-
-#### 5. Build the frontend
+### Step 4 — Build the frontend
 
 ```bash
 cd ../client
 npm run build
 ```
 
-This creates a `dist/` folder with static files.
+This creates `client/dist/` — the Express server serves these files automatically in production.
 
-#### 6. Serve frontend from Express (production)
-
-Add static file serving to the Express server. Create or edit `server/index.js` to add these lines before the listen call:
-
-```javascript
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// Serve built frontend
-app.use(express.static(path.join(__dirname, '../client/dist')));
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-});
-```
-
-#### 7. Seed and start
-
-```bash
-cd server
-node seed.js
-node index.js
-```
-
-The dashboard will be available at `http://<your-server-ip>:5000`.
-
-#### 8. Keep it running with PM2
+### Step 5 — Install PM2
 
 ```bash
 npm install -g pm2
-cd server
-pm2 start index.js --name lumenleaf-dashboard
-pm2 save
-pm2 startup   # follow the printed command to enable on boot
 ```
 
-#### 9. (Optional) Nginx reverse proxy with HTTPS
+### Step 6 — Start with PM2
+
+```bash
+cd ..   # back to dashboard/
+pm2 start ecosystem.config.cjs
+```
+
+Verify it is running:
+
+```bash
+pm2 status
+```
+
+You should see:
+
+```
+│ lumenleaf-dashboard │ online │
+```
+
+The dashboard is now live at `http://localhost:5000` (or `http://<your-server-ip>:5000`).
+
+### Step 7 — Save and enable auto-start on reboot
+
+```bash
+pm2 save
+pm2 startup
+```
+
+Follow the command PM2 prints to enable boot startup.
+
+---
+
+## PM2 Commands
+
+| Command                              | What it does                         |
+|--------------------------------------|--------------------------------------|
+| `pm2 status`                         | Check running processes              |
+| `pm2 logs lumenleaf-dashboard`       | Stream live logs                     |
+| `pm2 restart lumenleaf-dashboard`    | Restart after changes                |
+| `pm2 stop lumenleaf-dashboard`       | Stop the app                         |
+| `pm2 delete lumenleaf-dashboard`     | Remove from PM2                      |
+| `pm2 save`                           | Persist process list                 |
+| `pm2 startup`                        | Enable auto-start on boot            |
+
+---
+
+## After Code Changes
+
+```bash
+cd dashboard/client && npm run build
+pm2 restart lumenleaf-dashboard
+```
+
+---
+
+## Re-seeding Data
+
+To reset and regenerate all demo data:
+
+```bash
+cd dashboard/server
+node seed.js
+pm2 restart lumenleaf-dashboard
+```
+
+---
+
+## (Optional) Nginx Reverse Proxy + HTTPS
+
+If you want to serve the dashboard on a domain with SSL:
+
+### Nginx config
 
 ```nginx
 server {
@@ -217,83 +232,88 @@ server {
 }
 ```
 
-Then enable HTTPS with Certbot:
+### Enable HTTPS with Certbot
 
 ```bash
 sudo apt install certbot python3-certbot-nginx
 sudo certbot --nginx -d dashboard.lumenleafproperties.com
 ```
 
-### Option B: Platform Deployment (Zero-ops)
+---
 
-| Service   | What to deploy        | Free tier |
-|-----------|-----------------------|-----------|
-| Render    | server/ as Web Service | Yes      |
-| Vercel    | client/ as Static Site | Yes      |
-| Railway   | server/ as Service     | Yes      |
-| Fly.io    | server/ as App         | Yes      |
+## VPS Setup from Scratch (Ubuntu 22.04+)
 
-For Render/Railway, set environment variables in their dashboard and add a build command:
+If starting from a fresh server:
 
+```bash
+# 1. Install Node.js 22
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# 2. Install PM2
+npm install -g pm2
+
+# 3. Clone the repo
+git clone <your-repo-url> lumen-leaf
+cd lumen-leaf/dashboard
+
+# 4. Install, configure, seed, build, start
+cd server && npm install
+nano .env                          # add MONGODB_URI, JWT_SECRET, PORT
+node seed.js
+cd ../client && npm install && npm run build
+cd ..
+pm2 start ecosystem.config.cjs
+pm2 save && pm2 startup
 ```
-Build: cd client && npm install && npm run build
-Start: cd server && node index.js
-```
+
+Dashboard is live at `http://<server-ip>:5000`.
+
+---
+
+## Login Credentials
+
+| Field    | Value               |
+|----------|---------------------|
+| Email    | admin@lumenleaf.com |
+| Password | demo2025            |
 
 ## Dashboard Pages
 
-| Page             | URL              | Purpose                                           |
-|------------------|------------------|----------------------------------------------------|
-| Login            | /login           | Auth screen with demo credentials                  |
-| Overview         | /                | KPI cards, revenue chart, status donut, activity    |
-| Properties       | /properties      | Filterable table of all 50 managed properties       |
-| Property Detail  | /properties/:id  | Owner, tenant, rent history, maintenance, financials|
-| Financials       | /financials      | Revenue vs expenses, collection trend, breakdown    |
-| Maintenance      | /maintenance     | Ticket tracker, SLA compliance, category breakdown  |
-| Partners         | /partners        | Broker revenue share, partnership models, earnings  |
-| SLA Performance  | /sla             | Progress rings, NPS, retention, SLA definitions     |
-
-## Seeded Data Overview
-
-- **50 properties** across NCR (Gurgaon, Noida, Greater Noida, Faridabad, Ghaziabad)
-- **500+ rent transactions** spanning 12 months with realistic payment patterns
-- **120+ maintenance tickets** weighted toward plumbing and electrical
-- **9 broker partners** across revenue share, referral, and area partner models
-- **92% occupancy rate**, realistic collection rates with some overdue payments
-- **Revenue growth trend** showing business scaling over 12 months
-
-## Re-seeding
-
-To reset and regenerate all data:
-
-```bash
-cd dashboard/server
-node seed.js
-```
-
-This drops all existing collections and creates fresh deterministic data.
+| Page             | URL              | Purpose                                            |
+|------------------|------------------|-----------------------------------------------------|
+| Login            | /login           | Auth screen with demo credentials                   |
+| Overview         | /                | KPI cards, revenue chart, status donut, activity     |
+| Properties       | /properties      | Filterable table of all 50 managed properties        |
+| Property Detail  | /properties/:id  | Owner, tenant, rent history, maintenance, financials |
+| Financials       | /financials      | Revenue vs expenses, collection trend, breakdown     |
+| Maintenance      | /maintenance     | Ticket tracker, SLA compliance, category breakdown   |
+| Partners         | /partners        | Broker revenue share, partnership models, earnings   |
+| SLA Performance  | /sla             | Progress rings, NPS, retention, SLA definitions      |
 
 ## API Endpoints
 
-| Method | Endpoint                 | Auth | Description                          |
-|--------|--------------------------|------|--------------------------------------|
-| POST   | /api/auth/login          | No   | Returns JWT token                    |
-| GET    | /api/stats/overview      | Yes  | Aggregated dashboard metrics         |
-| GET    | /api/stats/revenue-trend | Yes  | 12-month revenue and expense data    |
-| GET    | /api/properties          | Yes  | List with filters (area, status, type, search) |
-| GET    | /api/properties/:id      | Yes  | Single property with full history    |
-| GET    | /api/transactions        | Yes  | Filterable transaction list          |
-| GET    | /api/transactions/summary| Yes  | Monthly aggregations                 |
-| GET    | /api/maintenance         | Yes  | Filterable maintenance tickets       |
-| GET    | /api/maintenance/stats   | Yes  | SLA metrics, category breakdown      |
-| GET    | /api/brokers             | Yes  | Partner list with earnings           |
-| GET    | /api/brokers/stats       | Yes  | Aggregated partner metrics           |
+| Method | Endpoint                  | Auth | Description                                     |
+|--------|---------------------------|------|-------------------------------------------------|
+| POST   | /api/auth/login           | No   | Returns JWT token                               |
+| GET    | /api/stats/overview       | Yes  | Aggregated dashboard metrics                    |
+| GET    | /api/stats/revenue-trend  | Yes  | 12-month revenue and expense data               |
+| GET    | /api/properties           | Yes  | List with filters (area, status, type, search)  |
+| GET    | /api/properties/:id       | Yes  | Single property with full history               |
+| GET    | /api/transactions         | Yes  | Filterable transaction list                     |
+| GET    | /api/transactions/summary | Yes  | Monthly aggregations                            |
+| GET    | /api/maintenance          | Yes  | Filterable maintenance tickets                  |
+| GET    | /api/maintenance/stats    | Yes  | SLA metrics, category breakdown                 |
+| GET    | /api/brokers              | Yes  | Partner list with earnings                      |
+| GET    | /api/brokers/stats        | Yes  | Aggregated partner metrics                      |
 
 All authenticated endpoints require `Authorization: Bearer <token>` header.
 
-## Notes
+## Seeded Data
 
-- The "Demo Mode" badge appears in the sidebar and login screen — this is intentional for honest pitching
-- Seed data uses deterministic randomness so re-running `seed.js` produces consistent results
-- The Vite dev server proxies `/api` requests to the Express server (configured in `vite.config.js`)
-- For production, build the client and serve static files from Express as described above
+- 50 properties across NCR (Gurgaon, Noida, Greater Noida, Faridabad, Ghaziabad)
+- 500+ rent transactions spanning 12 months
+- 120+ maintenance tickets weighted toward plumbing and electrical
+- 9 broker partners (revenue share, referral, area partner models)
+- 92% occupancy, realistic collection rates with some overdue payments
+- Revenue growth trend showing business scaling over 12 months
