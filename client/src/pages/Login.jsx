@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import DemoBadge from '../components/DemoBadge';
-
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,10 +30,6 @@ export default function Login() {
       <div className="absolute inset-0 opacity-30" style={{
         background: 'radial-gradient(ellipse 60% 40% at 50% 30%, rgba(13,115,119,0.25) 0%, transparent 60%)',
       }} />
-
-      <div className="absolute top-6 right-6">
-        <DemoBadge />
-      </div>
 
       <div className="relative z-10 w-full max-w-sm">
         <div className="text-center mb-8">
@@ -80,10 +74,6 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-white/30 text-xs mb-1">Demo credentials</p>
-          <p className="text-white/50 text-xs font-mono">admin@lumenleaf.com / demo2025</p>
-        </div>
       </div>
     </div>
   );

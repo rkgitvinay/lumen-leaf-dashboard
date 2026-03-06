@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Building2, IndianRupee, Wrench, Users, ShieldCheck, LogOut, Menu, X } from 'lucide-react';
-import DemoBadge from './DemoBadge';
 import { useAuth } from '../context/AuthContext';
 
 const links = [
@@ -29,8 +28,7 @@ export default function Layout({ children }) {
         <div className="text-lg font-bold text-white mb-1">
           Lumen <span className="text-teal-400">Leaf</span>
         </div>
-        <div className="text-[10px] text-white/40 mb-3">Properties Dashboard</div>
-        <DemoBadge />
+        <div className="text-[10px] text-white/40">Properties Dashboard</div>
       </div>
 
       <nav className="flex-1 px-3 mt-4 space-y-1">
